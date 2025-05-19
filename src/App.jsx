@@ -1,17 +1,19 @@
 import React, { useState } from "react";
+import fish from './assets/fish.jpeg'
+import boli from './assets/boli.jpeg'
 
 
 const products = [
   {
     name: "Grilled Boli",
     price: "₦1,000",
-    image: "https://via.placeholder.com/300x200?text=Grilled+Boli",
+    image: boli,
     message: "Hi, I want to order Grilled Boli for ₦1000",
   },
   {
     name: "Spicy Fish",
     price: "₦2,500",
-    image: "https://via.placeholder.com/300x200?text=Spicy+Fish",
+    image: fish,
     message: "Hi, I want to order Spicy Fish for ₦2500",
   },
 ];
@@ -37,9 +39,9 @@ export default function App() {
       <main className="p-6">
         <h1 className="text-2xl font-semibold mb-4">Menu</h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6">
           {products.map((product, index) => (
-            <div key={index} className="bg-white rounded-xl shadow p-4">
+            <div key={index} className="bg-white  rounded-xl shadow p-4">
               <img
                 src={product.image}
                 alt={product.name}
