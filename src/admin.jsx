@@ -1,9 +1,34 @@
 import React, { useEffect, useState } from "react";
 import { client } from "./sanityClient";
+import ImageUpload from "./imageUpload";
+
+async function generateProductId() {
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const length = 6;
+
+  const generateId = () => {
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+  };
+
+  while (true) {
+    const newId = generateId();
+    const existing = await client.fetch(
+      `*[_type == "product" && productId == $newId]`,
+      { newId }
+    );
+    if (existing.length === 0) return newId;
+  }
+}
 
 export default function Admin() {
+  const [imageFile, setImageFile] = useState(null);
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState({
+    productId: "",
     title: "",
     price: "",
     stock: 0,
@@ -13,11 +38,19 @@ export default function Admin() {
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+
+    // Only generate new productId if NOT editing
+    if (!editingId) {
+      (async () => {
+        const id = await generateProductId();
+        setForm((f) => ({ ...f, productId: id }));
+      })();
+    }
+  }, [editingId]);
 
   const fetchProducts = async () => {
     const query = `*[_type == "product"]{
-      _id, title, price, stock,
+      _id, productId, title, price, stock,
       "imageUrl": image.asset->url
     }`;
     try {
@@ -40,13 +73,13 @@ export default function Admin() {
     e.preventDefault();
 
     try {
-      let imageAsset;
-
-      if (form.image && !editingId) {
-        imageAsset = await client.assets.upload("image", form.image, {
-          filename: form.image.name,
-          contentType: form.image.type,
-        });
+      let imageRef = null;
+      if (imageFile) {
+        const asset = await client.assets.upload("image", imageFile);
+        imageRef = {
+          _type: "image",
+          asset: { _type: "reference", _ref: asset._id },
+        };
       }
 
       if (editingId) {
@@ -62,25 +95,27 @@ export default function Admin() {
       } else {
         await client.create({
           _type: "product",
+          productId: form.productId,
           title: form.title,
           price: parseFloat(form.price),
           stock: form.stock,
-          image: {
-            _type: "image",
-            asset: {
-              _type: "reference",
-              _ref: imageAsset._id,
-            },
-          },
+          image: imageRef,
         });
       }
 
+      // Reset form and imageFile
       setForm({
+        productId: "",
         title: "",
         price: "",
         stock: 0,
         image: null,
       });
+      setImageFile(null);
+
+      // Generate new productId for next product
+      const newId = await generateProductId();
+      setForm((f) => ({ ...f, productId: newId }));
 
       fetchProducts();
     } catch (err) {
@@ -90,6 +125,7 @@ export default function Admin() {
 
   const handleEdit = (product) => {
     setForm({
+      productId: product.productId, // Keep existing productId readonly
       title: product.title,
       price: product.price,
       stock: product.stock,
@@ -129,6 +165,14 @@ export default function Admin() {
         className="bg-white shadow-md rounded-lg p-6 mb-10 space-y-4"
       >
         <input
+          name="productId"
+          value={form.productId}
+          readOnly
+          className="w-full border border-gray-300 p-2 rounded bg-gray-100 cursor-not-allowed"
+          placeholder="Product ID"
+        />
+
+        <input
           name="title"
           value={form.title}
           onChange={handleChange}
@@ -158,14 +202,7 @@ export default function Admin() {
         />
 
         {!editingId && (
-          <input
-            type="file"
-            accept="image/*"
-            name="image"
-            onChange={handleChange}
-            required
-            className="block w-full"
-          />
+          <ImageUpload onImageCropped={(file) => setImageFile(file)} />
         )}
 
         <button
@@ -193,6 +230,7 @@ export default function Admin() {
               <h3 className="font-bold">{product.title}</h3>
               <p>₦{product.price}</p>
               <p className="text-gray-600">{product.stock} in stock</p>
+              <p className="text-gray-400 text-sm">ID: {product.productId}</p>
 
               <div className="flex gap-2 mt-2">
                 <button

@@ -6,8 +6,6 @@ const catalog = () => {
   const phoneNumber = "2348066983809"; // Replace with actual WhatsApp number
 
   const handleOrderClick = (message) => {
-    // setShowToast(true);
-    // setTimeout(() => setShowToast(false), 3000);
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
       message
     )}`;
@@ -21,6 +19,7 @@ const catalog = () => {
       try {
         const data = await client.fetch(`*[_type == "product"]{
           _id,
+          productId,
           title,
           price,
           stock,
@@ -39,7 +38,7 @@ const catalog = () => {
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6">
           {products.map((product, index) => (
             <div key={index} className={`bg-white ${product.stock==0 ? 'hidden':'block'}  rounded-xl shadow p-4`}>
-
+                
                 <img src={product.imageUrl} alt={product.title} className="w-full rounded" />
                 <h2 className="text-lg font-bold mt-2">{product.title}</h2>
 
@@ -49,7 +48,7 @@ const catalog = () => {
                 </div>
 
               <button
-                onClick={() => handleOrderClick(`Hi, I want to order ${product.title} for #${product.price}`)}
+                onClick={() => handleOrderClick(`Hi, I want to order ${product.title} for #${product.price}. [${product.productId}]`)}
                 className="block w-full bg-green-500 text-white text-center py-2 rounded hover:bg-green-600 transition"
               >
                 Order via WhatsApp
