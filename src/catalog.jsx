@@ -23,7 +23,7 @@ const catalog = () => {
           _id,
           title,
           price,
-          inStock,
+          stock,
           "imageUrl": image.asset->url
         }`);
         setProducts(data);
@@ -38,14 +38,14 @@ const catalog = () => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6">
           {products.map((product, index) => (
-            <div key={index} className="bg-white  rounded-xl shadow p-4">
+            <div key={index} className={`bg-white ${product.stock==0 ? 'hidden':'block'}  rounded-xl shadow p-4`}>
 
                 <img src={product.imageUrl} alt={product.title} className="w-full rounded" />
                 <h2 className="text-lg font-bold mt-2">{product.title}</h2>
 
                 <div className='flex justify-between items-center py-2'>
                     <p className="text-gray-700 text-xl font-bold">₦{product.price}</p>
-                    <p className="text-sm text-green-600">{product.inStock > 0 ? `${product.inStock} left` : 'Out of stock'}</p>
+                    <p className="text-sm text-green-600">{product.stock > 0 ? `${product.stock} left` : 'Out of stock'}</p>
                 </div>
 
               <button
