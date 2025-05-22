@@ -31,7 +31,7 @@ export default function Admin() {
     productId: "",
     title: "",
     price: "",
-    stock: 0,
+    stock: "",
     image: null,
   });
   const [editingId, setEditingId] = useState(null);
@@ -108,7 +108,7 @@ export default function Admin() {
         productId: "",
         title: "",
         price: "",
-        stock: 0,
+        stock: "",
         image: null,
       });
       setImageFile(null);
@@ -164,6 +164,7 @@ export default function Admin() {
         onSubmit={handleSubmit}
         className="bg-white shadow-md rounded-lg p-6 mb-10 space-y-4"
       >
+        <label htmlFor="productId">Product ID</label>
         <input
           name="productId"
           value={form.productId}

@@ -54,7 +54,7 @@ const ImageUpload = ({ onImageCropped }) => {
       >
         <input {...getInputProps()} />
         <p className="text-gray-500 text-center">
-          Drag & drop or click to upload (auto square crop)
+          Drag & drop or click to upload
         </p>
       </div>
 
