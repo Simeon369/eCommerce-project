@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { client } from './sanityClient';
+import { config } from './constants';
 
 const catalog = () => {
-    // const [showToast, setShowToast] = useState(false);
-  const phoneNumber = "2348066983809"; // Replace with actual WhatsApp number
-
+ // Replace with actual WhatsApp number
+  const phoneNumber = config.phoneNumber;
+  
+  
   const handleOrderClick = (message) => {
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
       message

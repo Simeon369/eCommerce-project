@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import Catalog from "./catalog";
+import {config} from './constants'
+
 
 
 export default function Shop() {
@@ -7,7 +9,7 @@ export default function Shop() {
   return (
     <div className="bg-gray-100 text-gray-800 min-h-screen">
       <header className="bg-green-600 text-white text-center p-4 text-2xl font-bold">
-        Get Sporty!
+        {config.storeName}
       </header>
 
       <main className="p-6">

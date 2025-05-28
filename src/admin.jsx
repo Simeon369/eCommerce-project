@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { client } from "./sanityClient";
 import ImageUpload from "./imageUpload";
 
+
 async function generateProductId() {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   const length = 6;
@@ -47,6 +48,67 @@ export default function Admin() {
       })();
     }
   }, [editingId]);
+
+  const sellerPhoneNumber = "2348066983809"; // replace with your WhatsApp number
+
+  const handleShare = (product) => {
+    const message = `🛒 Order Request
+
+  Product: ${product.title}
+  Price: ₦${product.price}
+  Product ID: ${product.productId}
+
+  Click to order: https://wa.me/${sellerPhoneNumber}?text=I want to order product ${product.productId}`;
+
+    // open WhatsApp in new tab
+    window.open(`https://wa.me/${sellerPhoneNumber}?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
+
+  const [storeName, setStoreName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+
+  // Fetch existing config
+  useEffect(() => {
+    const fetchStoreConfig = async () => {
+      const config = await client.fetch(`*[_type == "storeConfig"][0]`);
+      if (config) {
+        setStoreName(config.storeName);
+        setPhoneNumber(config.phoneNumber);
+      }
+    };
+    fetchStoreConfig();
+  }, []);
+
+  // Update storeConfig
+  const handleProfileChange = async (e) => {
+  e.preventDefault();
+  try {
+    // Step 1: Ensure the document exists (create if not)
+    await client.createIfNotExists({
+      _id: "storeConfig",
+      _type: "storeConfig",
+      storeName,
+      phoneNumber,
+    });
+
+    // Step 2: Update it
+    await client
+      .patch("storeConfig")
+      .set({
+        storeName,
+        phoneNumber,
+      })
+      .commit();
+
+    alert("Store settings updated!");
+  } catch (err) {
+    console.error("Update error:", err);
+    alert("Error updating settings.");
+  }
+};
+
+
 
   const fetchProducts = async () => {
     const query = `*[_type == "product"]{
@@ -156,6 +218,39 @@ export default function Admin() {
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4">
+
+      <div className="max-w-md mx-auto p-6 bg-white rounded shadow">
+      <h2 className="text-2xl font-bold mb-4">Store Settings</h2>
+      <form onSubmit={handleProfileChange} className="space-y-4">
+        <div>
+          <label className="block font-semibold">Store Name</label>
+          <input
+            type="text"
+            value={storeName}
+            onChange={(e) => setStoreName(e.target.value)}
+            className="w-full border border-gray-300 p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block font-semibold">Phone Number</label>
+          <input
+            type="tel"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className="w-full border border-gray-300 p-2 rounded"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Save Changes
+        </button>
+      </form>
+    </div>
+
       <h1 className="text-3xl font-bold mb-6">
         {editingId ? "Edit Product" : "Add Product"}
       </h1>
@@ -266,6 +361,13 @@ export default function Admin() {
               >
                 Delete
               </button>
+              <button
+                onClick={() => handleShare(product)}
+                className="bg-green-700 text-white px-3 py-1 rounded"
+              >
+                📤 Share
+              </button>
+
             </div>
           </div>
         ))}
