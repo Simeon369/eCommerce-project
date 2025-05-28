@@ -78,7 +78,7 @@ export default function Admin() {
       }
     };
     fetchStoreConfig();
-  }, []);
+  }, [])
 
   // Update storeConfig
   const handleProfileChange = async (e) => {
