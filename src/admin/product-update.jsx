@@ -1,7 +1,9 @@
-import React , {useState, useEffect} from 'react'
+import React, { useState, useEffect } from "react";
 import ImageUpload from "../imageUpload";
 import { fetchProducts } from "./products";
 import { client } from "../sanityClient";
+import { auth } from "../../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 async function generateProductId() {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -18,83 +20,102 @@ async function generateProductId() {
   while (true) {
     const newId = generateId();
     const existing = await client.fetch(
-      `*[_type == "product" && productId == $newId]`,
+      `*[_type == "user" && products[].productId == $newId]`,
       { newId }
     );
     if (existing.length === 0) return newId;
   }
 }
 
-const productUpdate = ({form, handleChange, setForm, editingId, setEditingId, setIsProductUpdate}) => {
-      
+const ProductUpdate = ({
+  uid,
+  form,
+  handleChange,
+  setProducts,
+  setForm,
+  editingId,
+  setEditingId,
+  setIsProductUpdate,
+}) => {
   const [imageFile, setImageFile] = useState(null);
-  
-  
-  
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
 
-        try {
-        let imageRef = null;
-        if (imageFile) {
-            const asset = await client.assets.upload("image", imageFile);
-            imageRef = {
-            _type: "image",
-            asset: { _type: "reference", _ref: asset._id },
-            };
-        }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    if (!uid) throw new Error("User UID not available");
 
-        if (editingId) {
-            await client
-            .patch(editingId)
-            .set({
-                title: form.title,
-                price: parseFloat(form.price),
-                stock: form.stock,
-            })
-            .commit();
-            setEditingId(null);
-        } else {
-            await client.create({
-            _type: "product",
-            productId: form.productId,
-            title: form.title,
-            price: parseFloat(form.price),
-            stock: form.stock,
-            image: imageRef,
-            });
-        }
+    // Upload image if new one is selected
+    let imageRef = form.image;
+    if (imageFile) {
+      const asset = await client.assets.upload("image", imageFile);
+      imageRef = {
+        _type: "image",
+        asset: { _type: "reference", _ref: asset._id },
+      };
+    }
 
-        // Reset form and imageFile
-        setForm({
-            productId: "",
-            title: "",
-            price: "",
-            stock: "",
-            image: null,
-        });
-        setImageFile(null);
-        setIsProductUpdate(false)
+    // Fetch user doc
+    const userDoc = await client.fetch(
+      `*[_type == "user" && uid == $uid][0]{_id}`,
+      { uid }
+    );
+    if (!userDoc?._id) throw new Error("User document not found");
 
-        // Generate new productId for next product
-        const newId = await generateProductId();
-        setForm((f) => ({ ...f, productId: newId }));
-
-        fetchProducts();
-        } catch (err) {
-        console.error("Submit error:", err);
-        }
+    const updatedProduct = {
+      _type: "product",
+      productId: form.productId,
+      title: form.title,
+      price: parseFloat(form.price),
+      stock: parseInt(form.stock),
+      image: imageRef ?? form.image, // ✅ keep existing image if no new upload
     };
+
+    if (editingId) {
+      // Update: remove old and append new version
+      await client
+        .patch(userDoc._id)
+        .unset([`products[productId == "${editingId}"]`])
+        .append("products", [updatedProduct])
+        .commit();
+    } else {
+      // New product
+      await client
+        .patch(userDoc._id)
+        .setIfMissing({ products: [] })
+        .append("products", [updatedProduct])
+        .commit();
+    }
+
+    // Reset form
+    setForm({
+      productId: "",
+      title: "",
+      price: "",
+      stock: "",
+      image: null,
+    });
+    setImageFile(null);
+    setEditingId(null);
+    setIsProductUpdate(false);
+
+    const newId = await generateProductId();
+    setForm((f) => ({ ...f, productId: newId }));
+
+    const refreshedProducts = await fetchProducts(uid);
+    setProducts(refreshedProducts);
+  } catch (err) {
+    console.error("Submit error:", err.message);
+  }
+};
 
 
 
 
 
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(`${uid}`);
 
-    // Only generate new productId if NOT editing
     if (!editingId) {
       (async () => {
         const id = await generateProductId();
@@ -103,10 +124,9 @@ const productUpdate = ({form, handleChange, setForm, editingId, setEditingId, se
     }
   }, [editingId]);
 
-     
   return (
     <div>
-        <h1 className="text-3xl font-bold mb-6">
+      <h1 className="text-3xl font-bold mb-6">
         {editingId ? "Edit Product" : "Add Product"}
       </h1>
 
@@ -163,9 +183,8 @@ const productUpdate = ({form, handleChange, setForm, editingId, setEditingId, se
           {editingId ? "Update Product" : "Add Product"}
         </button>
       </form>
-      
     </div>
-  )
-}
+  );
+};
 
-export default productUpdate
+export default ProductUpdate;

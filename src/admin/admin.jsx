@@ -4,6 +4,9 @@ import { fetchProducts } from "./products";
 import { client } from "../sanityClient";
 import Settings from "./settings";
 import ProductUpdate from "./product-update";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../firebase"; 
+import { logout } from "../auth/logout";
 
 
 
@@ -44,7 +47,7 @@ export default function Admin() {
       title: "",
       price: "",
       stock: "",
-      image: null,
+      image: "",
   });
 
   const handleChange = (e) => {
@@ -55,14 +58,23 @@ export default function Admin() {
     }));
   };
 
+  const [uid, setUid] = useState()
 
-useEffect(() =>{
-  async function activate() {
-    const products = await fetchProducts();
-    setProducts(products)
-  }
-  activate()
-}, [])
+
+useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const uid = user.uid;
+        setUid(user.uid)
+        const fetchedProducts = await fetchProducts(uid);
+        setProducts(fetchedProducts);
+      } else {
+        console.log("No user logged in.");
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
 
 
@@ -74,52 +86,63 @@ const [editingId, setEditingId] = useState(null);
       title: product.title,
       price: product.price,
       stock: product.stock,
-      image: null,
+      image: product.imageUrl,
     });
-    setEditingId(product._id);
+    setEditingId(product.productId);
+    console.log(product);
+    
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure?")) return;
-    try {
-      await client.delete(id);
-      setProducts(products.filter((p) => p._id !== id));
-    } catch (err) {
-      console.error("Delete error:", err);
-    }
-  };
+  const handleDelete = async (productId) => {
+  if (!confirm("Are you sure you want to delete this product?")) return;
 
-  const handleStockChange = async (id, currentStock, increment = true) => {
-    const newStock = increment ? currentStock + 1 : Math.max(currentStock - 1, 0);
-    try {
-      await client.patch(id).set({ stock: newStock }).commit();
-      fetchProducts();
-    } catch (err) {
-      console.error("Stock update error:", err);
-    }
-  };
+  try {
+    if (!uid) throw new Error("User not authenticated");
+
+    // Fetch the user document ID
+    const userDoc = await client.fetch(
+      `*[_type == "user" && uid == $uid][0]{_id}`,
+      { uid }
+    );
+
+    if (!userDoc?._id) throw new Error("User document not found.");
+
+    // Patch the user document to remove the product from the products array
+    await client
+      .patch(userDoc._id)
+      .unset([`products[productId == "${productId}"]`])
+      .commit();
+
+    // Refresh the product list
+    
+  } catch (err) {
+    console.error("Delete error:", err.message);
+    alert("Failed to delete product: " + err.message);
+  }
+};
+
 
   return (
     <div className="max-w-[500px]  mx-auto py-22 px-4 relative">
-      <Nav toggleSettings={()=>toggleSettings} toggleProductUpdate={()=>toggleProductUpdate}  />
+      <Nav toggleSettings={()=>toggleSettings} toggleProductUpdate={()=>toggleProductUpdate} logout={()=>logout}  />
 
     <div>
       <div className={`${isSetting ? 'block':'hidden' }`}>
         <Settings setIsSetting={setIsSetting} />
       </div>
       <div className={`${isProductUpdate ? 'block':'hidden' }`}>
-        <ProductUpdate form={form} handleChange={handleChange} setForm={setForm} editingId={editingId} setEditingId={setEditingId} setIsProductUpdate={setIsProductUpdate} />
+        <ProductUpdate uid={uid} form={form} handleChange={handleChange} setProducts={setProducts} setForm={setForm} editingId={editingId} setEditingId={setEditingId} setIsProductUpdate={setIsProductUpdate} />
       </div>
     </div>
 
       <h2 className="text-2xl font-semibold mb-4">Products</h2>
 
       <div className="grid gap-6">
-        {products.map((product) => (
+        {products.map((product, index) => (
           <div
-            key={product._id}
+            key={index}
             className="flex items-center gap-4 bg-gray-100 p-4 rounded shadow"
-          >
+          >{console.log(product)}
             <img
               src={product.imageUrl}
               alt={product.title}
@@ -131,24 +154,7 @@ const [editingId, setEditingId] = useState(null);
               <p className="text-gray-600">{product.stock} in stock</p>
               <p className="text-gray-400 text-sm">ID: {product.productId}</p>
 
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() =>
-                    handleStockChange(product._id, product.stock, true)
-                  }
-                  className="bg-green-500 text-white px-2 py-1 rounded"
-                >
-                  ➕ Increase
-                </button>
-                <button
-                  onClick={() =>
-                    handleStockChange(product._id, product.stock, false)
-                  }
-                  className="bg-yellow-600 text-white px-2 py-1 rounded"
-                >
-                  ➖ Decrease
-                </button>
-              </div>
+              
             </div>
 
             <div className="flex flex-col gap-2 ml-4">
@@ -159,7 +165,7 @@ const [editingId, setEditingId] = useState(null);
                 Edit
               </button>
               <button
-                onClick={() => handleDelete(product._id)}
+                onClick={() => handleDelete(product.productId)}
                 className="bg-red-600 text-white px-3 py-1 rounded"
               >
                 Delete

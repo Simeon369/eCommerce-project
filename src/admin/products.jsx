@@ -1,10 +1,27 @@
-// productsService.js
 import { client } from "../sanityClient";
 
-export async function fetchProducts() {
-  const query = `*[_type == "product"]{
-    _id, productId, title, price, stock,
-    "imageUrl": image.asset->url
+/**
+ * Fetches the products for a specific user based on their Firebase UID
+ * @param {string} uid - Firebase UID of the user
+ * @returns {Promise<Array>} list of products
+ */
+export async function fetchProducts(uid) {
+  if (!uid) {
+    console.error("UID is required to fetch products.");
+    return [];
+  }
+
+  const query = `*[_type == "user" && uid == $uid][0]{
+    products[] {
+      productId,
+      title,
+      price,
+      stock,
+      "imageUrl": image.asset->url
+    }
   }`;
-  return await client.fetch(query);
+
+  const data = await client.fetch(query, { uid });
+
+  return data?.products || [];
 }
