@@ -12,7 +12,7 @@ const SignIn = () => {
   useEffect(() => {
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        navigate("/home");
+        navigate("/admin");
       }
     });
   }, [navigate]);
@@ -21,7 +21,7 @@ const SignIn = () => {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate("/home");
+      navigate("/admin");
     } catch (error) {
       alert(error.message);
     }

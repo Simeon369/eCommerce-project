@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useNavigate } from "react";
 import Nav from "./nav";
 import { fetchProducts } from "./products";
 import { client } from "../sanityClient";
